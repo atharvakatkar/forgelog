@@ -764,11 +764,7 @@ function checkPin(){
 
 let currentDay=null, setData={}, history=[], currentGraphType='weight', activeCharts=[];
 
-function getNextId(){
-  const next=(parseInt(localStorage.getItem('fl_next_id')||'0')+1);
-  localStorage.setItem('fl_next_id', String(next));
-  return next;
-}
+function getNextId(){ return Date.now(); }
 function loadLocalHistory(){ try{ const h=localStorage.getItem('fl_data'); if(h) history=JSON.parse(h); else history=[]; }catch(e){ history=[]; } }
 function saveLocalHistory(){ try{ localStorage.setItem('fl_data', JSON.stringify(history)); }catch(e){} }
 
