@@ -977,7 +977,7 @@ async function saveSession(){
   const day=DAYS[currentDay];
   const now=new Date();
   const session={
-    id:getNextId(), dayKey:currentDay, title:day.title,
+    id: String(getNextId()), dayKey:currentDay, title:day.title,
     date:now.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'}),
     timestamp:now.getTime(), phases:[]
   };
