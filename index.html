@@ -1327,7 +1327,9 @@ function renderVolumeGraph(el){
 // ═══════════════════════════════════════════════════════
 async function deleteFromSheets(sessionId){
   try{
-    const res=await fetch(SUPABASE_URL+'/rest/v1/sessions?id=eq.'+String(sessionId),{
+    const url = SUPABASE_URL+'/rest/v1/sessions?id=eq.'+String(sessionId);
+console.log('DELETE URL:', url);
+const res=await fetch(url,{
       method:'DELETE',
       headers:{
         'apikey':SUPABASE_KEY,
