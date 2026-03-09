@@ -1326,6 +1326,7 @@ async function deleteFromSheets(sessionId){
 let pendingDeleteId=null;
 function doDelete(btn){
   pendingDeleteId=btn.dataset.sid;
+  console.log('DELETE ID:', btn.dataset.sid, typeof btn.dataset.sid);
   const title=btn.dataset.title||'this session';
   document.getElementById('confirmSub').textContent='"'+title+'" will be permanently removed.';
   document.getElementById('confirmOverlay').style.display='flex';
