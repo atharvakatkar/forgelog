@@ -422,8 +422,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 // ═══════════════════════════════════════════════════════
 // CONFIG — paste your Apps Script URL here after setup
 // ═══════════════════════════════════════════════════════
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzitd8u4XGnUgsRocSLnSzOgjc0GfqBiRgB6UAiD2ELaXvmSlmPWePtC9RzzxrOu1iJ/exec';
-
+const SUPABASE_URL = 'https://svmegfqjqnjkbapgeple.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2bWVnZnFqcW5qa2JhcGdlcGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNDM4OTUsImV4cCI6MjA4ODYxOTg5NX0.fLJNJ3X1-Gh68i1-JozzRX36Bh6uXbCoUiPtH-Fz3S4';
 // ═══════════════════════════════════════════════════════
 // DAY DATA
 // ═══════════════════════════════════════════════════════
@@ -774,24 +774,34 @@ function saveLocalHistory(){ try{ localStorage.setItem('fl_data', JSON.stringify
 
 
 async function sendToSheets(session){
-  if(!SHEETS_URL) return false;
   try{
-    const payload=encodeURIComponent(JSON.stringify(session));
-    const res=await fetch(SHEETS_URL+'?action=save&session='+payload);
-    const d=await res.json();
-    return d.status==='ok';
+    const res=await fetch(SUPABASE_URL+'/rest/v1/sessions',{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify({id:String(session.id),timestamp:session.timestamp,data:session})
+    });
+    return res.ok;
   }catch(e){ return false; }
 }
 
 async function fetchFromSheets(){
-  if(!SHEETS_URL) return null;
   try{
-    const res=await fetch(SHEETS_URL+'?action=load',{mode:'cors'});
-    const d=await res.json();
-    return d.sessions||null;
+    const res=await fetch(SUPABASE_URL+'/rest/v1/sessions?order=timestamp.desc',{
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+SUPABASE_KEY
+      }
+    });
+    const rows=await res.json();
+    if(!Array.isArray(rows)) return null;
+    return rows.map(r=>r.data);
   }catch(e){ return null; }
 }
-
 // ═══════════════════════════════════════════════════════
 // VIEWS
 // ═══════════════════════════════════════════════════════
@@ -1317,9 +1327,14 @@ function renderVolumeGraph(el){
 // ═══════════════════════════════════════════════════════
 async function deleteFromSheets(sessionId){
   try{
-    const res=await fetch(SHEETS_URL+'?action=delete&sessionId='+sessionId);
-    const d=await res.json();
-    return d.status==='ok';
+    const res=await fetch(SUPABASE_URL+'/rest/v1/sessions?id=eq.'+sessionId,{
+      method:'DELETE',
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+SUPABASE_KEY
+      }
+    });
+    return res.ok;
   }catch(e){ return false; }
 }
 
