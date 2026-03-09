@@ -1335,10 +1335,11 @@ async function deleteFromSheets(sessionId){
         'Prefer':'return=representation'
       }
     });
+    const text=await res.text();
+    console.log('DELETE RESPONSE:', res.status, text);
     return res.ok;
-  }catch(e){ return false; }
+  }catch(e){ console.log('DELETE ERROR:', e); return false; }
 }
-
 let pendingDeleteId=null;
 function doDelete(btn){
   pendingDeleteId=btn.dataset.sid;
