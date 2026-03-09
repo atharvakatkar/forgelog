@@ -422,7 +422,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 // ═══════════════════════════════════════════════════════
 // CONFIG — paste your Apps Script URL here after setup
 // ═══════════════════════════════════════════════════════
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzitd8u4XGnUgsRocSLnSzOgjc0GfqBiRgB6UAiD2ELaXvmSlmPWePtC9RzzxrOu1iJ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz-KolwpCWVXG3mXg69rS8EUxYB0795MmKuFMZwOzpJGdkG5DLwIFOJZmLMzgryQxg9/exec';
 
 // ═══════════════════════════════════════════════════════
 // DAY DATA
@@ -1325,7 +1325,7 @@ async function deleteFromSheets(sessionId){
 
 let pendingDeleteId=null;
 function doDelete(btn){
-  pendingDeleteId=parseInt(btn.dataset.sid);
+  pendingDeleteId=btn.dataset.sid;
   const title=btn.dataset.title||'this session';
   document.getElementById('confirmSub').textContent='"'+title+'" will be permanently removed.';
   document.getElementById('confirmOverlay').style.display='flex';
@@ -1338,7 +1338,7 @@ async function executeDelete(){
   const id=pendingDeleteId;
   pendingDeleteId=null;
   // Remove locally and re-render immediately
-  history=history.filter(s=>s.id!==id);
+  history=history.filter(s=>String(s.id)!==String(id));
   saveLocalHistory();
   renderSessions();
   // Delete from Sheets
