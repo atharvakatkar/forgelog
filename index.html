@@ -1361,9 +1361,6 @@ async function executeDelete(){
   const ok=await deleteFromSheets(id);
   if(ok){
     showToast('SESSION DELETED');
-    // Re-fetch from Sheets to confirm and sync
-    const remote=await fetchFromSheets();
-    if(remote){ history=remote; saveLocalHistory(); renderSessions(); renderExProgress(); }
   } else {
     showToast('Sheets sync failed — deleted locally',true);
   }
