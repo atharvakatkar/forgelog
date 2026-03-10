@@ -768,6 +768,8 @@ function checkPin(){
     closePinOverlay();
     loadLocalHistory();
     renderHistory();
+    // Flush any pending queue immediately on unlock
+    if(navigator.onLine) flushQueue();
   } else {
     document.getElementById('pinError').textContent='INCORRECT PIN';
     pinEntry='';
@@ -1105,6 +1107,8 @@ async function saveSession(){
   let sheetsSaved=await sendToSheets(session);
   btn.classList.remove('saving');
   showToast(sheetsSaved?'SAVED ✓':'SAVED — will sync when online',!sheetsSaved);
+  // Re-render history so session appears immediately (online or offline)
+  renderSessions(); renderExProgress();
   // Reset form — clear all inputs and ticks
   setData={};
   if(currentDay){
@@ -1247,13 +1251,21 @@ async function renderGraphs(){
 
   // 2. Fetch Supabase in background
   fetchFromSheets().then(remote=>{
-    if(!remote) return;
+    // Always call _drawGraphs after fetch — handles empty state if no data
+    if(!remote){
+      // Supabase unreachable — if we have no local data either, show empty state
+      if(!history.length){ activeCharts.forEach(c=>c.destroy()); activeCharts=[]; _drawGraphs(el); }
+      return;
+    }
     const remoteStr=JSON.stringify(remote.map(s=>s.id).sort());
     const localStr=JSON.stringify(history.map(s=>s.id).sort());
     if(remoteStr!==localStr){
       history=remote;
       saveLocalHistory();
-      // Re-draw only if data changed
+      activeCharts.forEach(c=>c.destroy()); activeCharts=[];
+      _drawGraphs(el);
+    } else if(!history.length){
+      // No data locally and none remotely — render empty state
       activeCharts.forEach(c=>c.destroy()); activeCharts=[];
       _drawGraphs(el);
     }
@@ -1501,9 +1513,15 @@ initPin();
 document.getElementById('logView').classList.add('picker-mode');
 updateSyncBadge();
 
-// Flush any pending queue on load and when connection returns
+// Flush queue on reconnect
 window.addEventListener('online', ()=>{ showToast('BACK ONLINE — SYNCING'); flushQueue(); });
-window.addEventListener('load', ()=>{ if(navigator.onLine) flushQueue(); });
+
+// Polling fallback — iOS PWA doesn't always fire 'online' event reliably
+// Checks every 30 seconds if there's a queue and we're online
+setInterval(()=>{ if(navigator.onLine && loadQueue().length>0) flushQueue(); }, 30000);
+
+// Flush on load if already online (use setTimeout to ensure PIN flow runs first)
+setTimeout(()=>{ if(navigator.onLine) flushQueue(); }, 1000);
 
 // ── SERVICE WORKER REGISTRATION ──
 if('serviceWorker' in navigator){
