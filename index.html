@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ForgeLog">
+<meta name="theme-color" content="#0c0c0e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-512.png">
 <title>ForgeLog</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1040,11 +1043,21 @@ async function saveSession(){
 // HISTORY RENDER
 // ═══════════════════════════════════════════════════════
 async function renderHistory(){
-  // Show local data immediately so History tab isn't blank
+  // 1. Render instantly from localStorage — zero wait
   renderSessions(); renderExProgress();
-  // Then fetch from Sheets and re-render if we got data
-  const remote=await fetchFromSheets();
-  if(remote){ history=remote; renderSessions(); renderExProgress(); }
+  // 2. Fetch Supabase in background
+  fetchFromSheets().then(remote=>{
+    if(!remote) return;
+    // Only re-render if data actually changed
+    const remoteStr=JSON.stringify(remote.map(s=>s.id).sort());
+    const localStr=JSON.stringify(history.map(s=>s.id).sort());
+    if(remoteStr!==localStr){
+      history=remote;
+      saveLocalHistory();
+      renderSessions();
+      renderExProgress();
+    }
+  });
 }
 
 function renderSessions(){
@@ -1132,13 +1145,31 @@ function setGraphType(t){
 
 async function renderGraphs(){
   const el=document.getElementById('graphContent');
-  el.innerHTML=`<div class="loading-graphs"><div class="spin">◌</div><p>Loading from Sheets...</p></div>`;
-  const remote=await fetchFromSheets();
-  if(remote) history=remote;
 
-  // destroy old charts
+  // 1. Render immediately from local cache (no spinner if we have data)
   activeCharts.forEach(c=>c.destroy()); activeCharts=[];
+  if(history.length){
+    _drawGraphs(el);
+  } else {
+    el.innerHTML=`<div class="loading-graphs"><div class="spin">◌</div><p>Loading...</p></div>`;
+  }
 
+  // 2. Fetch Supabase in background
+  fetchFromSheets().then(remote=>{
+    if(!remote) return;
+    const remoteStr=JSON.stringify(remote.map(s=>s.id).sort());
+    const localStr=JSON.stringify(history.map(s=>s.id).sort());
+    if(remoteStr!==localStr){
+      history=remote;
+      saveLocalHistory();
+      // Re-draw only if data changed
+      activeCharts.forEach(c=>c.destroy()); activeCharts=[];
+      _drawGraphs(el);
+    }
+  });
+}
+
+function _drawGraphs(el){
   if(currentGraphType==='run'){ renderRunGraph(el); return; }
   if(currentGraphType==='volume'){ renderVolumeGraph(el); return; }
 
@@ -1389,6 +1420,13 @@ function setDate(){
 setDate();
 initPin();
 document.getElementById('logView').classList.add('picker-mode');
+
+// ── SERVICE WORKER REGISTRATION ──
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 
 </script>
 </body>
