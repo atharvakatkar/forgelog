@@ -1354,9 +1354,9 @@ function doDelete(btn){
 function closeConfirm(){ document.getElementById('confirmOverlay').style.display='none'; pendingDeleteId=null; }
 async function executeDelete(){
   if(!pendingDeleteId) return;
-  closeConfirm();
   const id=pendingDeleteId;
   pendingDeleteId=null;
+  closeConfirm();
   // Remove locally and re-render immediately
   history=history.filter(s=>String(s.id)!==String(id));
   saveLocalHistory();
