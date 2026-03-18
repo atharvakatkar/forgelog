@@ -148,6 +148,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 .ex-card-chevron.open{transform:rotate(180deg);}
 .ex-card-body{border-top:1px solid var(--border);padding:14px;display:none;}
 .ex-card-body.open{display:block;}
+.lbs-btn{background:none;border:1px solid var(--amber);color:var(--amber);font-family:var(--mono);font-size:9px;padding:1px 4px;border-radius:2px;cursor:pointer;margin-left:5px;vertical-align:middle;opacity:0.8;}
+.lbs-btn:active{opacity:1;background:var(--amber);color:#000;}
 
 /* ── SET ROWS ── */
 .set-rows{display:flex;flex-direction:column;gap:10px;}
@@ -302,6 +304,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
     <div class="view log-view active" id="logView">
 
 
+
+      <!-- Restore Banner -->
+      <div id="restoreBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:var(--amber);color:#000;padding:12px 16px;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;">
+        <div style="flex:1;line-height:1.4;"><strong>SESSION IN PROGRESS</strong><br><span id="restoreDayName" style="opacity:0.8"></span></div>
+        <button onclick="acceptRestore()" style="background:#000;color:var(--amber);border:none;padding:7px 14px;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;border-radius:3px;">RESUME</button>
+        <button onclick="dismissRestore()" style="background:transparent;color:#000;border:1px solid rgba(0,0,0,0.3);padding:7px 10px;font-family:var(--mono);font-size:11px;cursor:pointer;border-radius:3px;">DISCARD</button>
+      </div>
 
       <!-- Day Picker -->
       <div class="day-picker" id="dayPicker">
@@ -812,8 +821,8 @@ function checkPin(){
     closePinOverlay();
     loadLocalHistory();
     renderHistory();
-    // Flush any pending queue immediately on unlock
     if(navigator.onLine) flushQueue();
+    restoreInProgressSession();
   } else {
     document.getElementById('pinError').textContent='INCORRECT PIN';
     pinEntry='';
@@ -821,12 +830,42 @@ function checkPin(){
   }
 }
 
-
 let currentDay=null, setData={}, history=[], currentGraphType='weight', activeCharts=[];
 
 function getNextId(){ return Date.now(); }
 function loadLocalHistory(){ try{ const h=localStorage.getItem('fl_data'); if(h) history=JSON.parse(h); else history=[]; }catch(e){ history=[]; } }
 function saveLocalHistory(){ try{ localStorage.setItem('fl_data', JSON.stringify(history)); }catch(e){} }
+
+// ── IN-PROGRESS SESSION PERSISTENCE ──
+const INPROG_KEY = 'fl_inprogress';
+function saveInProgress(){
+  if(!currentDay) return;
+  try{ localStorage.setItem(INPROG_KEY, JSON.stringify({ day: currentDay, data: setData, ts: Date.now() })); }catch(e){}
+}
+function clearInProgress(){ try{ localStorage.removeItem(INPROG_KEY); }catch(e){} }
+function restoreInProgressSession(){
+  try{
+    const raw = localStorage.getItem(INPROG_KEY);
+    if(!raw) return;
+    const saved = JSON.parse(raw);
+    if(Date.now() - saved.ts > 6*60*60*1000){ clearInProgress(); return; }
+    const banner = document.getElementById('restoreBanner');
+    if(banner){ banner.style.display='flex'; document.getElementById('restoreDayName').textContent = DAYS[saved.day]?.title || saved.day; }
+    window._pendingRestore = saved;
+  }catch(e){ clearInProgress(); }
+}
+function acceptRestore(){
+  const saved = window._pendingRestore;
+  if(!saved) return;
+  document.getElementById('restoreBanner').style.display='none';
+  loadDay(saved.day, saved.data);
+  window._pendingRestore = null;
+}
+function dismissRestore(){
+  document.getElementById('restoreBanner').style.display='none';
+  clearInProgress();
+  window._pendingRestore = null;
+}
 
 // ═══════════════════════════════════════════════════════
 // SHEETS SETUP
@@ -985,12 +1024,12 @@ function confirmGoBack(){
   document.getElementById('sessionScreen').classList.remove('active');
   document.getElementById('dayPicker').style.display='flex';
   document.getElementById('logView').classList.add('picker-mode');
-  currentDay=null; setData={};  }
+  clearInProgress(); currentDay=null; setData={};  }
 
 // ═══════════════════════════════════════════════════════
 // LOAD DAY
 // ═══════════════════════════════════════════════════════
-function loadDay(key){
+function loadDay(key, restoredData){
   document.getElementById('logView').classList.remove('picker-mode');
   currentDay=key; setData={};
   const day=DAYS[key];
@@ -1009,7 +1048,7 @@ function loadDay(key){
     const wrap=document.createElement('div'); wrap.className='ex-cards';
     ph.exercises.forEach(ex=>{
       setData[ex.id]={};
-      for(let s=1;s<=ex.sets;s++) setData[ex.id][s]={weight:'',reps:'',done:false};
+      for(let s=1;s<=ex.sets;s++) setData[ex.id][s]=(restoredData&&restoredData[ex.id]&&restoredData[ex.id][s])||{weight:'',reps:'',done:false};
       total+=ex.sets;
       wrap.appendChild(buildExCard(ex));
     });
@@ -1018,6 +1057,23 @@ function loadDay(key){
   document.getElementById('sessionProg').textContent=`0/${total}`;
   document.getElementById('progFill').style.width='0%';
   document._total=total;
+  // If restoring a session, repopulate input fields and ticks
+  if(restoredData){
+    requestAnimationFrame(()=>{
+      Object.keys(restoredData).forEach(exId=>{
+        Object.keys(restoredData[exId]).forEach(s=>{
+          const d=restoredData[exId][s];
+          if(d.weight){ const el=document.getElementById(`inp_${exId}_${s}_w`); if(el){ el.value=d.weight; el.classList.add('filled'); } }
+          if(d.reps){ const el=document.getElementById(`inp_${exId}_${s}_r`); if(el){ el.value=d.reps; el.classList.add('filled'); } }
+          if(d.done){ document.getElementById(`tick_${exId}_${s}`)?.classList.add('checked'); }
+        });
+        // Mark exercise done status
+        const allDone = Object.values(restoredData[exId]).length>0 && Object.values(restoredData[exId]).every(d=>d.done);
+        if(allDone) document.getElementById('status_'+exId)?.classList.add('done');
+      });
+      updateProgress();
+    });
+  }
 }
 
 function buildExCard(ex){
@@ -1045,7 +1101,7 @@ function buildSetBody(ex){
   const howto=ex.notes?`<div class="howto"><div class="howto-title">// How To</div><div class="howto-text">${ex.notes}</div></div>`:'';
   if(ex.type==='weighted'){
     let rows='';
-    for(let s=1;s<=ex.sets;s++) rows+=`<div class="set-row weighted"><div class="set-num">${s}</div><div class="set-field"><div class="set-field-label">KG</div><input class="set-input" type="number" inputmode="decimal" step="0.5" placeholder="—" id="inp_${ex.id}_${s}_w" onchange="onInput('${ex.id}',${s},'w',this.value)"></div><div class="set-field"><div class="set-field-label">REPS</div><input class="set-input" type="number" inputmode="numeric" placeholder="—" id="inp_${ex.id}_${s}_r" onchange="onInput('${ex.id}',${s},'r',this.value)"></div><button class="set-tick" id="tick_${ex.id}_${s}" onclick="toggleTick('${ex.id}',${s})">✓</button></div>`;
+    for(let s=1;s<=ex.sets;s++) rows+=`<div class="set-row weighted"><div class="set-num">${s}</div><div class="set-field"><div class="set-field-label">KG <button class="lbs-btn" onclick="openLbsConverter('${ex.id}',${s})" title="Convert lbs to kg">lbs</button></div><input class="set-input" type="number" inputmode="decimal" step="0.5" placeholder="—" id="inp_${ex.id}_${s}_w" onchange="onInput('${ex.id}',${s},'w',this.value)"></div><div class="set-field"><div class="set-field-label">REPS</div><input class="set-input" type="number" inputmode="numeric" placeholder="—" id="inp_${ex.id}_${s}_r" onchange="onInput('${ex.id}',${s},'r',this.value)"></div><button class="set-tick" id="tick_${ex.id}_${s}" onclick="toggleTick('${ex.id}',${s})">✓</button></div>`;
     return `${howto}<div class="set-rows">${rows}</div>`;
   }
   if(ex.type==='reps'){
@@ -1058,7 +1114,22 @@ function buildSetBody(ex){
   return howto;
 }
 
-function toggleExCard(id){ const b=document.getElementById('body_'+id),c=document.getElementById('chev_'+id); const o=b.classList.toggle('open'); c.classList.toggle('open',o); }
+function toggleExCard(id){
+  const b=document.getElementById('body_'+id), c=document.getElementById('chev_'+id);
+  const isOpen = b.classList.contains('open');
+  // Close all other open exercise cards first
+  document.querySelectorAll('.ex-card-body.open').forEach(el=>{
+    if(el.id !== 'body_'+id){
+      el.classList.remove('open');
+      const otherId = el.id.replace('body_','');
+      document.getElementById('chev_'+otherId)?.classList.remove('open');
+    }
+  });
+  // Toggle this one
+  const o = !isOpen;
+  b.classList.toggle('open', o);
+  c.classList.toggle('open', o);
+}
 
 function onRunInput(exId,part,v){
   if(!setData[exId]) setData[exId]={};
@@ -1075,6 +1146,7 @@ function onInput(exId,s,f,v){
   if(!setData[exId]) setData[exId]={};
   if(!setData[exId][s]) setData[exId][s]={weight:'',reps:'',done:false};
   setData[exId][s][f==='w'?'weight':'reps']=v;
+  saveInProgress();
   const el=document.getElementById(`inp_${exId}_${s}_${f}`);
   if(el) el.classList.toggle('filled',v!=='');
 }
@@ -1084,6 +1156,7 @@ function toggleTick(exId,s){
   if(!setData[exId][s]) setData[exId][s]={weight:'',reps:'',done:false};
   setData[exId][s].done=!setData[exId][s].done;
   document.getElementById(`tick_${exId}_${s}`)?.classList.toggle('checked',setData[exId][s].done);
+  saveInProgress();
   updateProgress(); updateExStatus(exId);
 }
 
@@ -1122,6 +1195,7 @@ async function saveAndGoBack(){
 }
 async function saveSession(){
   if(!currentDay) return;
+  clearInProgress();
   const btn=document.getElementById('saveBtn');
   btn.classList.add('saving');
   const day=DAYS[currentDay];
@@ -1567,6 +1641,49 @@ setInterval(()=>{ if(navigator.onLine && loadQueue().length>0) flushQueue(); }, 
 // Flush on load if already online (use setTimeout to ensure PIN flow runs first)
 setTimeout(()=>{ if(navigator.onLine) flushQueue(); }, 1000);
 
+// ── LBS → KG CONVERTER ──
+let _lbsTarget = null; // { exId, s }
+function openLbsConverter(exId, s){
+  _lbsTarget = { exId, s };
+  const modal = document.getElementById('lbsModal');
+  const input = document.getElementById('lbsInput');
+  document.getElementById('lbsPreview').textContent = '';
+  input.value = '';
+  modal.style.display = 'flex';
+  setTimeout(()=>input.focus(), 100);
+}
+function updateLbsPreview(){
+  const lbs = parseFloat(document.getElementById('lbsInput').value);
+  const prev = document.getElementById('lbsPreview');
+  if(!isNaN(lbs) && lbs > 0){
+    const kg = Math.round(lbs * 0.453592 * 4) / 4; // round to nearest 0.25kg
+    prev.textContent = lbs + ' lbs = ' + kg + ' kg';
+  } else {
+    prev.textContent = '';
+  }
+}
+function applyLbsConvert(){
+  if(!_lbsTarget) return;
+  const lbs = parseFloat(document.getElementById('lbsInput').value);
+  if(isNaN(lbs) || lbs <= 0) { closeLbsModal(); return; }
+  const kg = Math.round(lbs * 0.453592 * 4) / 4;
+  const { exId, s } = _lbsTarget;
+  const el = document.getElementById(`inp_${exId}_${s}_w`);
+  if(el){ el.value = kg; el.classList.add('filled'); }
+  onInput(exId, s, 'w', String(kg));
+  closeLbsModal();
+}
+function closeLbsModal(){
+  document.getElementById('lbsModal').style.display = 'none';
+  _lbsTarget = null;
+}
+// Close modal on backdrop click
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('lbsModal').addEventListener('click', function(e){
+    if(e.target === this) closeLbsModal();
+  });
+});
+
 // ── SERVICE WORKER REGISTRATION ──
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
@@ -1575,5 +1692,23 @@ if('serviceWorker' in navigator){
 }
 
 </script>
+
+<!-- lbs → kg Converter Modal -->
+<div id="lbsModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+  <div style="background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:24px;width:260px;font-family:var(--mono);">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">CONVERT</div>
+    <div style="font-size:14px;font-weight:700;color:var(--fg);margin-bottom:16px;">lbs → kg</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">ENTER WEIGHT IN LBS</div>
+    <input id="lbsInput" type="number" inputmode="decimal" step="0.5" placeholder="e.g. 135"
+      style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border);color:var(--fg);font-family:var(--mono);font-size:20px;padding:10px 12px;border-radius:4px;margin-bottom:10px;"
+      oninput="updateLbsPreview()">
+    <div id="lbsPreview" style="font-size:13px;color:var(--amber);min-height:20px;margin-bottom:16px;text-align:center;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="applyLbsConvert()" style="flex:1;background:var(--amber);color:#000;border:none;padding:10px;font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;border-radius:4px;">APPLY</button>
+      <button onclick="closeLbsModal()" style="flex:1;background:var(--s2);color:var(--muted);border:1px solid var(--border);padding:10px;font-family:var(--mono);font-size:12px;cursor:pointer;border-radius:4px;">CANCEL</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
