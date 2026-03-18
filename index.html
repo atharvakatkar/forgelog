@@ -112,6 +112,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 .session-screen{display:none;position:fixed;inset:0;flex-direction:column;background:var(--bg);z-index:150;}
 .session-screen.active{display:flex;}
 .session-topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:50;}
+#restoreBanner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--amber);color:#000;padding-top:14px;padding-bottom:calc(var(--safe-bot) + 14px);padding-left:16px;padding-right:16px;font-family:var(--mono);font-size:12px;box-shadow:0 -2px 12px rgba(0,0,0,0.4);}
+#restoreBanner .rb-title{line-height:1.4;margin-bottom:10px;font-weight:700;}
+#restoreBanner .rb-sub{opacity:0.75;font-weight:400;}
+#restoreBanner .rb-btns{display:flex;gap:8px;}
+#restoreBanner .rb-btns button{flex:1;padding:11px;font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;border-radius:4px;border:none;}
+#restoreBanner .rb-resume{background:#000;color:var(--amber);}
+#restoreBanner .rb-discard{background:transparent;color:#000;border:1px solid rgba(0,0,0,0.35) !important;}
 .back-btn{background:none;border:none;color:var(--green);font-family:var(--mono);font-size:12px;cursor:pointer;padding:6px 0;min-height:36px;display:flex;align-items:center;gap:4px;touch-action:manipulation;}
 .session-topbar-title{font-family:var(--display);font-size:18px;letter-spacing:0.06em;flex:1;}
 .session-topbar-prog{font-family:var(--mono);font-size:11px;color:var(--green);}
@@ -306,11 +313,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 
 
       <!-- Restore Banner -->
-      <div id="restoreBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:var(--amber);color:#000;padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:14px;padding-left:16px;padding-right:16px;font-family:var(--mono);font-size:12px;">
-        <div style="line-height:1.4;margin-bottom:10px;"><strong>SESSION IN PROGRESS</strong><br><span id="restoreDayName" style="opacity:0.8"></span></div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="acceptRestore()" style="flex:1;background:#000;color:var(--amber);border:none;padding:10px;font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;">RESUME</button>
-          <button onclick="dismissRestore()" style="flex:1;background:transparent;color:#000;border:1px solid rgba(0,0,0,0.4);padding:10px;font-family:var(--mono);font-size:12px;cursor:pointer;border-radius:3px;">DISCARD</button>
+      <div id="restoreBanner">
+        <div class="rb-title">SESSION IN PROGRESS<br><span class="rb-sub" id="restoreDayName"></span></div>
+        <div class="rb-btns">
+          <button class="rb-resume" onclick="acceptRestore()">RESUME</button>
+          <button class="rb-discard" onclick="dismissRestore()">DISCARD</button>
         </div>
       </div>
 
@@ -852,7 +859,7 @@ function restoreInProgressSession(){
     const saved = JSON.parse(raw);
     if(Date.now() - saved.ts > 6*60*60*1000){ clearInProgress(); return; }
     const banner = document.getElementById('restoreBanner');
-    if(banner){ banner.style.display='flex'; document.getElementById('restoreDayName').textContent = DAYS[saved.day]?.title || saved.day; }
+    if(banner){ banner.style.display='block'; document.getElementById('restoreDayName').textContent = DAYS[saved.day]?.title || saved.day; }
     window._pendingRestore = saved;
   }catch(e){ clearInProgress(); }
 }
