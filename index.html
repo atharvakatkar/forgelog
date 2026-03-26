@@ -1185,6 +1185,35 @@ function toggleTick(exId,s){
   if(!setData[exId][s]) setData[exId][s]={weight:'',reps:'',done:false};
   setData[exId][s].done=!setData[exId][s].done;
   document.getElementById(`tick_${exId}_${s}`)?.classList.toggle('checked',setData[exId][s].done);
+
+  // Auto-fill subsequent empty sets with same weight/reps
+  if(setData[exId][s].done){
+    const w = setData[exId][s].weight;
+    const r = setData[exId][s].reps;
+    // Find how many sets this exercise has
+    let totalSets = 1;
+    if(currentDay){
+      DAYS[currentDay].phases.forEach(ph=>ph.exercises.forEach(ex=>{
+        if(ex.id===exId) totalSets=ex.sets;
+      }));
+    }
+    for(let ns=s+1; ns<=totalSets; ns++){
+      if(!setData[exId][ns]) setData[exId][ns]={weight:'',reps:'',done:false};
+      const d = setData[exId][ns];
+      // Only fill if the field is currently empty
+      if(w && !d.weight){
+        d.weight = w;
+        const el = document.getElementById(`inp_${exId}_${ns}_w`);
+        if(el){ el.value = w; el.classList.add('filled'); }
+      }
+      if(r && !d.reps){
+        d.reps = r;
+        const el = document.getElementById(`inp_${exId}_${ns}_r`);
+        if(el){ el.value = r; el.classList.add('filled'); }
+      }
+    }
+  }
+
   saveInProgress();
   updateProgress(); updateExStatus(exId);
 }
@@ -1225,6 +1254,8 @@ async function saveAndGoBack(){
 async function saveSession(){
   if(!currentDay) return;
   clearInProgress();
+  // Stop the stopwatch automatically
+  if(_swRunning){ swToggle(); }
   const btn=document.getElementById('saveBtn');
   btn.classList.add('saving');
   const day=DAYS[currentDay];
