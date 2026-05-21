@@ -334,27 +334,27 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
         <div class="section-label">// Select Training Day</div>
         <div class="day-card" onclick="loadDay('day1')">
           <div class="day-card-dot" style="background:var(--blue)"></div>
-          <div><div class="day-card-day">TUESDAY</div><div class="day-card-name">Lower Body Power</div></div>
+          <div><div class="day-card-day">Day 1</div><div class="day-card-name">Lower Body Power</div></div>
           <div class="day-card-arrow">›</div>
         </div>
         <div class="day-card" onclick="loadDay('day2')">
           <div class="day-card-dot" style="background:var(--amber)"></div>
-          <div><div class="day-card-day">WEDNESDAY</div><div class="day-card-name">Upper Body Power</div></div>
+          <div><div class="day-card-day">Day 2</div><div class="day-card-name">Upper Body Power</div></div>
           <div class="day-card-arrow">›</div>
         </div>
         <div class="day-card" onclick="loadDay('day3')">
           <div class="day-card-dot" style="background:var(--green)"></div>
-          <div><div class="day-card-day">FRIDAY</div><div class="day-card-name">Full Body Athletic Power</div></div>
+          <div><div class="day-card-day">Day 3</div><div class="day-card-name">Full Body Athletic Power</div></div>
           <div class="day-card-arrow">›</div>
         </div>
         <div class="day-card" onclick="loadDay('day4a')">
           <div class="day-card-dot" style="background:var(--red)"></div>
-          <div><div class="day-card-day">SATURDAY · WEEK A</div><div class="day-card-name">5km Run</div></div>
+          <div><div class="day-card-day">Weekend A</div><div class="day-card-name">5km Run</div></div>
           <div class="day-card-arrow">›</div>
         </div>
         <div class="day-card" onclick="loadDay('day4b')">
           <div class="day-card-dot" style="background:var(--red)"></div>
-          <div><div class="day-card-day">SATURDAY · WEEK B</div><div class="day-card-name">Sprint Training</div></div>
+          <div><div class="day-card-day">Weekend B</div><div class="day-card-name">Sprint Training</div></div>
           <div class="day-card-arrow">›</div>
         </div>
       </div>
@@ -469,7 +469,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // DAY DATA
 // ═══════════════════════════════════════════════════════
 const DAYS = {
-  day1:{num:'01',title:'LOWER BODY',meta:'Tuesday · Legs, Glutes, Plyometrics',color:'var(--blue)',
+  day1:{num:'01',title:'LOWER BODY',meta:'Day 1 · Legs, Glutes, Plyometrics',color:'var(--blue)',
     phases:[
       {phase:'warm',label:'Warmup',duration:'12–15 min',exercises:[
         {id:'w1_bike',name:'Stationary Bike / Rowing Machine',target:'5 min',type:'timed',sets:1,
@@ -547,7 +547,7 @@ const DAYS = {
       ]},
     ]
   },
-  day2:{num:'02',title:'UPPER BODY',meta:'Wednesday · Push, Pull, Shoulder, Rotation',color:'var(--amber)',
+  day2:{num:'02',title:'UPPER BODY',meta:'Day 2 · Push, Pull, Shoulder, Rotation',color:'var(--amber)',
     phases:[
       {phase:'warm',label:'Warmup',duration:'12–15 min',exercises:[
         {id:'w2_row',name:'Rowing Machine',target:'5 min',type:'timed',sets:1,
@@ -619,7 +619,7 @@ const DAYS = {
       ]},
     ]
   },
-  day3:{num:'03',title:'FULL BODY',meta:'Friday · Power, Core, Plyometrics, Cricket',color:'var(--green)',
+  day3:{num:'03',title:'FULL BODY',meta:'Day 3 · Power, Core, Plyometrics, Cricket',color:'var(--green)',
     phases:[
       {phase:'warm',label:'Warmup',duration:'12–15 min',exercises:[
         {id:'w3_row',name:'Rowing Machine',target:'5 min',type:'timed',sets:1,
@@ -705,7 +705,7 @@ const DAYS = {
       ]},
     ]
   },
-  day4a:{num:'04',title:'5KM RUN',meta:'Saturday · Aerobic Base — Week A',color:'var(--red)',
+  day4a:{num:'04',title:'5KM RUN',meta:'Weekend A · Aerobic Base — Week A',color:'var(--red)',
     phases:[
       {phase:'warm',label:'Pre-Run Warmup',duration:'8–10 min',exercises:[
         {id:'r1_walk',name:'Brisk Walk',target:'2 min',type:'timed',sets:1,
@@ -743,7 +743,7 @@ const DAYS = {
       ]},
     ]
   },
-  day4b:{num:'04',title:'SPRINTS',meta:'Saturday · Speed, Acceleration, COD — Week B',color:'var(--red)',
+  day4b:{num:'04',title:'SPRINTS',meta:'Weekend B · Speed, Acceleration, COD — Week B',color:'var(--red)',
     phases:[
       {phase:'warm',label:'Pre-Sprint Warmup',duration:'12 min',exercises:[
         {id:'sw1_jog',name:'Easy Jog',target:'3 min',type:'timed',sets:1,
