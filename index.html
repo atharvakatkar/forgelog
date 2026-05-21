@@ -230,6 +230,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 .progress-inner .section-label{margin-bottom:10px;}
 
 .graph-type-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;}
+.graph-filter-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;}
+.gfilter{flex-shrink:0;padding:8px 14px;background:var(--s2);border:1px solid var(--border);border-radius:20px;font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;}
+.gfilter.active{background:var(--gdim);color:var(--green);border-color:var(--gborder);}
 .graph-type-tabs::-webkit-scrollbar{display:none;}
 .gtab{flex-shrink:0;padding:8px 14px;background:var(--s2);border:1px solid var(--border);border-radius:20px;font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
 .gtab.active{background:var(--gdim);color:var(--green);border-color:var(--gborder);}
@@ -402,6 +405,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
           <button class="gtab" onclick="setGraphType('volume')">Volume</button>
           <button class="gtab" onclick="setGraphType('reps')">Reps</button>
           <button class="gtab" onclick="setGraphType('run')">5km Time</button>
+        </div>
+        <div class="graph-filter-tabs">
+          <button class="gfilter active" onclick="setGraphFilter('all')">All</button>
+          <button class="gfilter" onclick="setGraphFilter('lower')">Lower Body</button>
+          <button class="gfilter" onclick="setGraphFilter('upper')">Upper Body</button>
+          <button class="gfilter" onclick="setGraphFilter('full')">Full Body</button>
         </div>
         <div id="graphContent"></div>
       </div>
@@ -849,7 +858,7 @@ function checkPin(){
   }
 }
 
-let currentDay=null, setData={}, history=[], currentGraphType='weight', activeCharts=[];
+let currentDay=null, setData={}, history=[], currentGraphType='weight', currentGraphFilter='all', activeCharts=[];
 
 function getNextId(){ return Date.now(); }
 function loadLocalHistory(){ try{ const h=localStorage.getItem('fl_data'); if(h) history=JSON.parse(h); else history=[]; }catch(e){ history=[]; } }
@@ -1472,14 +1481,24 @@ function toggleExCard2(i){ const b=document.getElementById('exbody_'+i),c=docume
 // ═══════════════════════════════════════════════════════
 function setGraphType(t){
   currentGraphType=t;
+  const ft=document.querySelector('.graph-filter-tabs');
+  if(ft) ft.style.display = (t==='weight' || t==='reps') ? 'flex' : 'none';
   document.querySelectorAll('.gtab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.gtab')[['weight','volume','reps','run'].indexOf(t)].classList.add('active');
   renderGraphs();
 }
 
+function setGraphFilter(f){
+  currentGraphFilter=f;
+  document.querySelectorAll('.gfilter').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.gfilter')[['all','lower','upper','full'].indexOf(f)].classList.add('active');
+  renderGraphs();
+}
+
 async function renderGraphs(){
   const el=document.getElementById('graphContent');
-
+  const ft=document.querySelector('.graph-filter-tabs');
+  if(ft) ft.style.display = (currentGraphType==='weight' || currentGraphType==='reps') ? 'flex' : 'none';
   // 1. Render immediately from local cache (no spinner if we have data)
   activeCharts.forEach(c=>c.destroy()); activeCharts=[];
   if(history.length){
@@ -1518,6 +1537,12 @@ function _drawGraphs(el){
   // Build exercise map for weight/reps
   const exMap={};
   history.forEach(s=>s.phases.forEach(ph=>ph.exercises.forEach(ex=>{
+    const dayGroup = s.dayKey === 'day1' ? 'lower'
+      : s.dayKey === 'day2' ? 'upper'
+      : s.dayKey === 'day3' ? 'full'
+      : null;
+
+    if(currentGraphFilter !== 'all' && dayGroup !== currentGraphFilter) return;
     if(ex.type!=='weighted') return;
     if(!exMap[ex.id]) exMap[ex.id]={name:ex.name,data:[]};
     const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.weight)||0));
