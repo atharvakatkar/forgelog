@@ -171,7 +171,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;
 .set-row{display:grid;gap:8px;align-items:end;}
 .set-row.weighted{grid-template-columns:24px 1fr 1fr 44px;}
 .set-row.reps-only{grid-template-columns:24px 1fr 44px;}
-.set-row.timed-row{grid-template-columns:1fr 44px;}
+.set-row.timed-row{grid-template-columns:1fr 72px;}
+.set-tick.big{width:72px;height:72px;font-size:22px;border-radius:12px;}
 .set-field-sep{font-family:var(--mono);font-size:20px;color:var(--muted);align-self:flex-end;padding-bottom:8px;flex-shrink:0;}
 .run-row{grid-template-columns:1fr 1fr 44px;}
 .set-num{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding-bottom:12px;}
@@ -1193,7 +1194,7 @@ function buildSetBody(ex){
     for(let s=1;s<=ex.sets;s++) rows+=`<div class="set-row reps-only"><div class="set-num">${s}</div><div class="set-field"><div class="set-field-label">REPS DONE</div><input class="set-input" type="number" inputmode="numeric" placeholder="—" id="inp_${ex.id}_${s}_r" onchange="onInput('${ex.id}',${s},'r',this.value)"></div><button class="set-tick" id="tick_${ex.id}_${s}" onclick="toggleTick('${ex.id}',${s})">✓</button></div>`;
     return `${howto}<div class="set-rows">${rows}</div>`;
   }
-  if(ex.type==='timed') return `${howto}<div class="set-rows"><div class="set-row timed-row"><div class="set-field"><div class="set-field-label">NOTES (OPTIONAL)</div><input class="notes-input" type="text" placeholder="e.g. felt tight on left side…" id="inp_${ex.id}_1_r" onchange="onInput('${ex.id}',1,'r',this.value)"></div><button class="set-tick" id="tick_${ex.id}_1" onclick="toggleTick('${ex.id}',1)">✓</button></div></div>`;
+  if(ex.type==='timed') return `${howto}<div class="set-rows"><div class="set-row timed-row"><div></div><button class="set-tick big" id="tick_${ex.id}_1" onclick="toggleTick('${ex.id}',1)">✓</button></div></div>`;
   if(ex.type==='run') return `${howto}<div class="set-rows"><div class="set-row run-row"><div class="set-field"><div class="set-field-label">MINUTES</div><input class="set-input" type="number" inputmode="numeric" placeholder="26" min="0" max="99" id="inp_${ex.id}_1_mm" onchange="onRunInput('${ex.id}','mm',this.value)"></div><div class="set-field-sep">:</div><div class="set-field"><div class="set-field-label">SECONDS</div><input class="set-input" type="number" inputmode="numeric" placeholder="42" min="0" max="59" id="inp_${ex.id}_1_ss" onchange="onRunInput('${ex.id}','ss',this.value)"></div><div class="set-field"><div class="set-field-label">KM</div><input class="set-input" type="number" inputmode="decimal" step="0.1" placeholder="5.0" id="inp_${ex.id}_1_r" onchange="onInput('${ex.id}',1,'r',this.value)"></div><button class="set-tick" id="tick_${ex.id}_1" onclick="toggleTick('${ex.id}',1)">✓</button></div></div>`;
   return howto;
 }
