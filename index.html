@@ -798,7 +798,7 @@ const DAYS = {
 // ═══════════════════════════════════════════════════════
 // PIN LOCK SYSTEM
 // ═══════════════════════════════════════════════════════
-const OWNER_PIN = '1234'; // ← CHANGE THIS TO YOUR PIN
+const OWNER_PIN = '3010'; // ← CHANGE THIS TO YOUR PIN
 const SESSION_KEY = 'fl_unlocked';
 let pinEntry = '';
 
@@ -855,12 +855,63 @@ function loadLocalHistory(){ try{ const h=localStorage.getItem('fl_data'); if(h)
 function saveLocalHistory(){ try{ localStorage.setItem('fl_data', JSON.stringify(history)); }catch(e){} }
 
 // ── IN-PROGRESS SESSION PERSISTENCE ──
+// ── IN-PROGRESS SESSION PERSISTENCE ──
 const INPROG_KEY = 'fl_inprogress';
+
+function getSwState(){
+  const el = document.getElementById('swDisplay');
+  return {
+    running: !!_swRunning,
+    seconds: Number.isFinite(_swSeconds) ? _swSeconds : 0,
+    display: el ? el.textContent : '00:00:00'
+  };
+}
+
 function saveInProgress(){
   if(!currentDay) return;
-  try{ localStorage.setItem(INPROG_KEY, JSON.stringify({ day: currentDay, data: setData, ts: Date.now() })); }catch(e){}
+  try{
+    localStorage.setItem(INPROG_KEY, JSON.stringify({
+      day: currentDay,
+      data: setData,
+      ts: Date.now(),
+      sw: getSwState()
+    }));
+  }catch(e){}
 }
 function clearInProgress(){ try{ localStorage.removeItem(INPROG_KEY); }catch(e){} }
+function restoreSwState(sw){
+  if(!sw) return;
+  _swRunning = !!sw.running;
+  _swSeconds = Number.isFinite(sw.seconds) ? sw.seconds : 0;
+
+  const el = document.getElementById('swDisplay');
+  if(el) el.textContent = formatTime(_swSeconds);
+
+  const startBtn = document.getElementById('swStartBtn');
+  const resetBtn = document.getElementById('swResetBtn');
+  if(startBtn){
+    startBtn.textContent = _swRunning ? 'PAUSE' : 'START';
+    startBtn.className = _swRunning ? 'sw-btn sw-btn-stop' : 'sw-btn sw-btn-start';
+  }
+  if(resetBtn) resetBtn.style.display = _swSeconds > 0 ? 'block' : 'none';
+
+  const sticky = document.getElementById('swSticky');
+  if(sticky){
+    sticky.style.display = _swSeconds > 0 ? 'block' : 'none';
+    sticky.textContent = formatTime(_swSeconds);
+  }
+
+  clearInterval(_swInterval);
+  if(_swRunning){
+    _swInterval = setInterval(()=>{
+      _swSeconds++;
+      if(el) el.textContent = formatTime(_swSeconds);
+      if(sticky) sticky.textContent = formatTime(_swSeconds);
+      saveInProgress();
+    }, 1000);
+  }
+}
+
 function restoreInProgressSession(){
   try{
     const raw = localStorage.getItem(INPROG_KEY);
@@ -868,7 +919,10 @@ function restoreInProgressSession(){
     const saved = JSON.parse(raw);
     if(Date.now() - saved.ts > 6*60*60*1000){ clearInProgress(); return; }
     const banner = document.getElementById('restoreBanner');
-    if(banner){ banner.style.display='block'; document.getElementById('restoreDayName').textContent = DAYS[saved.day]?.title || saved.day; }
+    if(banner){
+      banner.style.display = 'block';
+      document.getElementById('restoreDayName').textContent = DAYS[saved.day]?.title || saved.day;
+    }
     window._pendingRestore = saved;
   }catch(e){ clearInProgress(); }
 }
@@ -877,6 +931,7 @@ function acceptRestore(){
   if(!saved) return;
   document.getElementById('restoreBanner').style.display='none';
   loadDay(saved.day, saved.data);
+  restoreSwState(saved.sw);
   window._pendingRestore = null;
 }
 function dismissRestore(){
@@ -1792,12 +1847,15 @@ function swReset(){
   _swRunning = false;
   clearInterval(_swInterval);
   _swSeconds = 0;
+
   const el = document.getElementById('swDisplay');
   if(el) el.textContent = '00:00:00';
+
   const startBtn = document.getElementById('swStartBtn');
   const resetBtn = document.getElementById('swResetBtn');
   if(startBtn){ startBtn.textContent='START'; startBtn.className='sw-btn sw-btn-start'; }
   if(resetBtn) resetBtn.style.display='none';
+
   const sticky = document.getElementById('swSticky');
   if(sticky){ sticky.style.display='none'; sticky.textContent='00:00:00'; }
 }
