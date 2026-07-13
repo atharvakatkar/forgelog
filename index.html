@@ -1352,7 +1352,7 @@ function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   const map={log:'logView',history:'historyView',progress:'progressView'};
   document.getElementById(map[v]).classList.add('active');
-  document.querySelectorAll('.nav-btn')[['log','history','progress'].indexOf(v)].classList.add('active');
+  activateTab('.nav-btn', ['log','history','progress'], v);
   if(v==='history') renderHistory();
   if(v==='progress') renderGraphs();
 }
@@ -1495,20 +1495,13 @@ function buildSetBody(ex){
 }
 
 function toggleExCard(id){
-  const b=document.getElementById('body_'+id), c=document.getElementById('chev_'+id);
-  const isOpen = b.classList.contains('open');
-  // Close all other open exercise cards first
   document.querySelectorAll('.ex-card-body.open').forEach(el=>{
     if(el.id !== 'body_'+id){
       el.classList.remove('open');
-      const otherId = el.id.replace('body_','');
-      document.getElementById('chev_'+otherId)?.classList.remove('open');
+      document.getElementById('chev_'+el.id.replace('body_',''))?.classList.remove('open');
     }
   });
-  // Toggle this one
-  const o = !isOpen;
-  b.classList.toggle('open', o);
-  c.classList.toggle('open', o);
+  toggleCollapse('body_'+id,'chev_'+id);
 }
 
 function onRunInput(exId,part,v){
@@ -1731,7 +1724,13 @@ function renderSessions(){
   });
 }
 
-function toggleSCard(i){ const b=document.getElementById('scbody_'+i),c=document.getElementById('schev_'+i); const o=b.classList.toggle('open'); c.classList.toggle('open',o); }
+function toggleCollapse(bodyId, chevId){
+  const b=document.getElementById(bodyId), c=document.getElementById(chevId);
+  if(!b||!c) return;
+  const o=b.classList.toggle('open');
+  c.classList.toggle('open',o);
+}
+function toggleSCard(i){ toggleCollapse('scbody_'+i,'schev_'+i); }
 
 function renderExProgress(){
   const el=document.getElementById('panelExercises');
@@ -1756,24 +1755,29 @@ function renderExProgress(){
     el.appendChild(card);
   });
 }
-function toggleExCard2(i){ const b=document.getElementById('exbody_'+i),c=document.getElementById('exchev_'+i); const o=b.classList.toggle('open'); c.classList.toggle('open',o); }
+function toggleExCard2(i){ toggleCollapse('exbody_'+i,'exchev_'+i); }
 
 // ═══════════════════════════════════════════════════════
 // GRAPHS
 // ═══════════════════════════════════════════════════════
+function activateTab(selector, list, value){
+  const els = document.querySelectorAll(selector);
+  els.forEach(b=>b.classList.remove('active'));
+  const idx = list.indexOf(value);
+  if(idx>=0 && els[idx]) els[idx].classList.add('active');
+}
+
 function setGraphType(t){
   currentGraphType=t;
   const ft=document.querySelector('.graph-filter-tabs');
   if(ft) ft.style.display = (t==='weight' || t==='reps') ? 'flex' : 'none';
-  document.querySelectorAll('.gtab').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.gtab')[['weight','volume','reps','run'].indexOf(t)].classList.add('active');
+  activateTab('.gtab', ['weight','volume','reps','run'], t);
   renderGraphs();
 }
 
 function setGraphFilter(f){
   currentGraphFilter=f;
-  document.querySelectorAll('.gfilter').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.gfilter')[['all','lower','upper','full','in_full','in_reactive'].indexOf(f)].classList.add('active');
+  activateTab('.gfilter', ['all','lower','upper','full','in_full','in_reactive'], f);
   renderGraphs();
 }
 
