@@ -1134,11 +1134,20 @@ function saveLocalHistory(){ try{ localStorage.setItem('fl_data', JSON.stringify
 // ── IN-PROGRESS SESSION PERSISTENCE ──
 const INPROG_KEY = 'fl_inprogress';
 
+function formatTime(totalSeconds){
+  const s = Math.max(0, Math.floor(totalSeconds||0));
+  const h = String(Math.floor(s/3600)).padStart(2,'0');
+  const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  return `${h}:${m}:${ss}`;
+}
+
 function getSwState(){
   const el = document.getElementById('swDisplay');
   return {
     running: !!_swRunning,
     seconds: Number.isFinite(_swSeconds) ? _swSeconds : 0,
+    startTs: _swStartTs || null,
     display: el ? el.textContent : '00:00:00'
   };
 }
@@ -1160,14 +1169,24 @@ function restoreSwState(sw){
   _swRunning = !!sw.running;
   _swSeconds = Number.isFinite(sw.seconds) ? sw.seconds : 0;
 
+  // Reconstruct startTs so elapsed time is computed from wall-clock time,
+  // not accumulated setInterval ticks (which get throttled/killed in background).
+  if(_swRunning){
+    _swStartTs = Number.isFinite(sw.startTs) ? sw.startTs : (Date.now() - _swSeconds*1000);
+    // Catch up for any time that passed while the app was closed/backgrounded
+    _swSeconds = Math.floor((Date.now() - _swStartTs)/1000);
+  } else {
+    _swStartTs = null;
+  }
+
   const el = document.getElementById('swDisplay');
   if(el) el.textContent = formatTime(_swSeconds);
 
   const startBtn = document.getElementById('swStartBtn');
   const resetBtn = document.getElementById('swResetBtn');
   if(startBtn){
-    startBtn.textContent = _swRunning ? 'PAUSE' : 'START';
-    startBtn.className = _swRunning ? 'sw-btn sw-btn-stop' : 'sw-btn sw-btn-start';
+    startBtn.textContent = _swRunning ? 'STOP' : 'RESUME';
+    startBtn.className = _swRunning ? 'sw-btn sw-btn-stop' : 'sw-btn sw-btn-resume';
   }
   if(resetBtn) resetBtn.style.display = _swSeconds > 0 ? 'block' : 'none';
 
@@ -1179,12 +1198,7 @@ function restoreSwState(sw){
 
   clearInterval(_swInterval);
   if(_swRunning){
-    _swInterval = setInterval(()=>{
-      _swSeconds++;
-      if(el) el.textContent = formatTime(_swSeconds);
-      if(sticky) sticky.textContent = formatTime(_swSeconds);
-      saveInProgress();
-    }, 1000);
+    _swInterval = setInterval(swTick, 1000);
   }
 }
 
@@ -1597,11 +1611,7 @@ async function saveSession(){
   btn.classList.add('saving');
   const day=DAYS[currentDay];
   const now=new Date();
-  const swSecs = _swSeconds;
-  const swH = String(Math.floor(swSecs/3600)).padStart(2,'0');
-  const swM = String(Math.floor((swSecs%3600)/60)).padStart(2,'0');
-  const swS = String(swSecs%60).padStart(2,'0');
-  const sessionDuration = swSecs > 0 ? `${swH}:${swM}:${swS}` : null;
+  const sessionDuration = _swSeconds > 0 ? formatTime(_swSeconds) : null;
   const session={
     id: String(getNextId()), dayKey:currentDay, title:day.title,
     date:now.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'}),
@@ -2108,26 +2118,28 @@ document.addEventListener('DOMContentLoaded', function(){
 let _swInterval = null;
 let _swSeconds = 0;
 let _swRunning = false;
+let _swStartTs = null; // wall-clock timestamp the current run segment began
 
 function swTick(){
-  _swSeconds++;
-  const h = String(Math.floor(_swSeconds/3600)).padStart(2,'0');
-  const m = String(Math.floor((_swSeconds%3600)/60)).padStart(2,'0');
-  const s = String(_swSeconds%60).padStart(2,'0');
-  const timeStr = `${h}:${m}:${s}`;
+  // Recompute from timestamp instead of incrementing — immune to throttled/skipped intervals
+  if(_swRunning && _swStartTs){
+    _swSeconds = Math.floor((Date.now() - _swStartTs)/1000);
+  }
+  const timeStr = formatTime(_swSeconds);
   const el = document.getElementById('swDisplay');
   if(el) el.textContent = timeStr;
-  // Update sticky timer in topbar
   const sticky = document.getElementById('swSticky');
   if(sticky) sticky.textContent = timeStr;
+  saveInProgress();
 }
 function swToggle(){
   const startBtn = document.getElementById('swStartBtn');
   const resetBtn = document.getElementById('swResetBtn');
   const sticky = document.getElementById('swSticky');
   if(!_swRunning){
-    // Start or Resume
+    // Start or Resume — anchor startTs to now minus whatever was already accumulated
     _swRunning = true;
+    _swStartTs = Date.now() - (_swSeconds*1000);
     _swInterval = setInterval(swTick, 1000);
     startBtn.textContent = 'STOP';
     startBtn.className = 'sw-btn sw-btn-stop';
@@ -2136,15 +2148,18 @@ function swToggle(){
   } else {
     // Stop
     _swRunning = false;
+    _swStartTs = null;
     clearInterval(_swInterval);
     startBtn.textContent = 'RESUME';
     startBtn.className = 'sw-btn sw-btn-resume';
     resetBtn.style.display = 'block';
     if(sticky) sticky.style.display = 'block';
   }
+  saveInProgress();
 }
 function swReset(){
   _swRunning = false;
+  _swStartTs = null;
   clearInterval(_swInterval);
   _swSeconds = 0;
 
@@ -2161,6 +2176,16 @@ function swReset(){
 }
 // Reset stopwatch when leaving session
 function resetStopwatch(){ swReset(); }
+
+// Recompute elapsed time whenever the app returns to foreground —
+// setInterval is throttled/suspended while backgrounded on mobile, so ticks get lost.
+// This forces an immediate correction the moment the screen wakes up.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    if(_swRunning && _swStartTs) swTick();
+    if(navigator.onLine) flushQueue();
+  }
+});
 
 // ── SERVICE WORKER REGISTRATION ──
 if('serviceWorker' in navigator){
