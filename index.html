@@ -1071,6 +1071,19 @@ const DAYS = {
   }
 };
 
+// Maps duplicate exercise ids (created when the plan was revised) to one canonical id
+// so Lifts/Graphs/PR tracking treat them as the same lift's continuous history.
+// Add a new line here any time a future plan edit reuses a lift under a new id.
+const EXERCISE_ALIASES = {
+  'd1in_trapbar':   'p3_trapbar',
+  'd1in_lmtwist':   'p3_lmtwist',
+  'd2in_lmtwist':   'p3_lmtwist',
+  'd2in_lmrotpress':'p2_lmrotpress',
+  'd1in_bench':     'p2_bench',
+  'd1in_lmknpress': 'p2_lmkneepress',
+};
+function canonicalExId(id){ return EXERCISE_ALIASES[id] || id; }
+
 // ═══════════════════════════════════════════════════════
 // PIN LOCK SYSTEM
 // ═══════════════════════════════════════════════════════
@@ -1737,8 +1750,9 @@ function renderExProgress(){
   const exMap={};
   history.forEach(s=>s.phases.forEach(ph=>ph.exercises.forEach(ex=>{
     if(ex.type!=='weighted') return;
-    if(!exMap[ex.id]) exMap[ex.id]={name:ex.name,entries:[]};
-    exMap[ex.id].entries.push({date:s.date,timestamp:s.timestamp,sets:ex.sets});
+    const cid = canonicalExId(ex.id);
+    if(!exMap[cid]) exMap[cid]={name:ex.name,entries:[]};
+    exMap[cid].entries.push({date:s.date,timestamp:s.timestamp,sets:ex.sets});
   })));
   Object.values(exMap).forEach(e=>e.entries.sort((a,b)=>b.timestamp-a.timestamp));
   if(!Object.keys(exMap).length){ el.innerHTML=emptyState('📈','No Weighted Data','Log a gym session to start tracking lift progress.'); return; }
@@ -1832,7 +1846,8 @@ function _drawGraphs(el){
 
     if(currentGraphFilter !== 'all' && dayGroup !== currentGraphFilter) return;
     if(ex.type!=='weighted') return;
-    if(!exMap[ex.id]) exMap[ex.id]={name:ex.name,data:[]};
+    const cid = canonicalExId(ex.id);
+    if(!exMap[cid]) exMap[cid]={name:ex.name,data:[]};
     const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.weight)||0));
     const maxR=Math.max(...ex.sets.map(s=>parseFloat(s.reps)||0));
     exMap[ex.id].data.push({date:s.date,timestamp:s.timestamp,maxWeight:maxW,maxReps:maxR,
@@ -2043,7 +2058,7 @@ async function executeDelete(){
     showToast('DELETED — will sync when online',false);
   }
 }
-function checkPR(exId,set,ts){ const w=parseFloat(set.weight); if(!w) return false; let best=0; history.forEach(s=>{ if(s.timestamp>=ts) return; s.phases.forEach(ph=>ph.exercises.forEach(ex=>{ if(ex.id===exId) ex.sets.forEach(st=>{ const sw=parseFloat(st.weight);if(sw>best)best=sw; }); })); }); return w>best; }
+function checkPR(exId,set,ts){ const w=parseFloat(set.weight); if(!w) return false; const cid=canonicalExId(exId); let best=0; history.forEach(s=>{ if(s.timestamp>=ts) return; s.phases.forEach(ph=>ph.exercises.forEach(ex=>{ if(canonicalExId(ex.id)===cid) ex.sets.forEach(st=>{ const sw=parseFloat(st.weight);if(sw>best)best=sw; }); })); }); return w>best; }
 function getBestWeight(entries){ let best=0; entries.forEach(e=>e.sets.forEach(s=>{ const w=parseFloat(s.weight);if(w>best)best=w; })); return best>0?best:null; }
 function emptyState(icon,title,sub){ return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`; }
 function showToast(msg,err=false){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(err?' error':''); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }

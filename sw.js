@@ -1,6 +1,6 @@
 // ForgeLog Service Worker
 // Cache version — bump this string any time you deploy a new version of index.html
-const CACHE_NAME = 'forgelog-v10';
+const CACHE_NAME = 'forgelog-v11';
 
 // Files to cache on install (the shell of the app)
 const SHELL_FILES = [
